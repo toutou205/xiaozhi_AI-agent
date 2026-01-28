@@ -14,14 +14,14 @@
 **解决方法**：
 请在 VS Code 的终端中手动运行一次推送命令，查看具体报错：
 ```powershell
-git push -u origin main
+git push -u origin master
 ```
 
 ---
 
 ## 2. 分支开发流程图 (Workflow Diagram)
 
-这是一个标准的团队协作开发流程。核心思想是：**main 分支永远保持干净稳定，所有新功能都在 dev 分支上开发。**
+这是一个标准的团队协作开发流程。核心思想是：**master 分支永远保持干净稳定，所有新功能都在 dev 分支上开发。**
 
 ```mermaid
 gitGraph
@@ -40,7 +40,7 @@ gitGraph
     %% (此时 GitHub 上会出现 dev-feature 分支)
     
     %% 4. 发起合并请求 (PR) & 代码审查
-    checkout main
+    checkout master
     merge dev-feature id: "Merge PR #1" tag: "v2.1.1"
     
     %% 5. 功能上线，删除开发分支
@@ -56,8 +56,8 @@ gitGraph
 
 1.  **确保主分支最新**:
     ```bash
-    git checkout main
-    git pull origin main
+    git checkout master
+    git pull origin master
     ```
 2.  **创建并切换分支**:
     ```bash
@@ -102,4 +102,4 @@ gitGraph
 | **3. 代码规范** | 没有多余的调试打印 (`printf`)，变量命名清晰，逻辑不混乱。 |
 | **4. 无冲突** | GitHub 显示 *"This branch has no conflicts with the base branch"*。如有冲突需先解决。 |
 
-> **通过标准后**：点击 **Squash and merge** (推荐) 或 **Merge commit**，将代码合并入 `main`。
+> **通过标准后**：点击 **Squash and merge** (推荐) 或 **Merge commit**，将代码合并入 `master`。
