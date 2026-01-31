@@ -198,6 +198,8 @@ public:
                                   DISPLAY_BACKLIGHT_OUTPUT_INVERT);
     return &backlight;
   }
+
+  virtual void *GetI2cMasterBusHandle() override { return i2c_bus_; }
 };
 
 DECLARE_BOARD(EspBox3Board);

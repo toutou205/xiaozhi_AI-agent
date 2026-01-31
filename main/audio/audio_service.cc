@@ -581,7 +581,7 @@ void AudioService::PlaySound(const std::string_view &ogg) {
     codec_->EnableOutput(true);
   }
 
-  ESP_LOGI(TAG, "PlaySound: %zu bytes", ogg.size());
+  ESP_LOGI(TAG, "PlaySound: %d bytes", (int)ogg.size());
 
   const uint8_t *buf = reinterpret_cast<const uint8_t *>(ogg.data());
   size_t size = ogg.size();

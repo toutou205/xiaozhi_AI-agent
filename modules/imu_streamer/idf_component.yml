@@ -1,0 +1,3 @@
+dependencies:
+  sensor_bmi270:
+    path: ../../drivers/sensor_bmi270

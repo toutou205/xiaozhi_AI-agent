@@ -4,20 +4,67 @@
 #include "audio_codec.h"
 #include "board.h"
 #include "display.h"
+#include "imu_streamer.h"
 #include "mcp_server.h"
 #include "mqtt_protocol.h"
+#include "protocols/websocket_protocol.h"
 #include "settings.h"
 #include "system_info.h"
-#include "websocket_protocol.h"
 
 #include <arpa/inet.h>
 #include <cJSON.h>
 #include <cstring>
 #include <driver/gpio.h>
+#include <esp_event.h>
 #include <esp_log.h>
 #include <font_awesome.h>
 
-#define TAG "Application"
+static const char *TAG = "Application";
+
+// Event handler for IMU AI events
+static void imu_event_handler(void *arg, esp_event_base_t base, int32_t id,
+                              void *data) {
+  if (base == IMU_AI_EVENT) {
+    auto &app = Application::GetInstance();
+    switch (id) {
+    case IMU_AI_EVT_TAP:
+      ESP_LOGI(TAG, "IMU_AI_EVT_TAP");
+      // 1. Wake up / Toggle State (Same as Button)
+      app.ToggleChatState();
+
+      // 2. Inject Prompt if we just entered Listening/Connecting state
+      // Note: ToggleChatState switches to Connecting/Listening.
+      // We should inject the prompt to simulate "I heard a tap".
+      // Delay slightly to ensure state transition
+      app.Schedule([&app]() {
+        // Only inject if we are now in a valid interaction state
+        auto state = app.GetDeviceState();
+        if (state == kDeviceStateListening || state == kDeviceStateConnecting) {
+          // Server rejects long text in 'detect' state.
+          // app.InjectPrompt("[System Event: User Tapped]
+          // 请回复：别拍了，我在！");
+          app.PlaySound(Lang::Sounds::OGG_TAP);
+        }
+      });
+      break;
+    case IMU_AI_EVT_SHAKE:
+      ESP_LOGI(TAG, "IMU_AI_EVT_SHAKE");
+      // 1. Wake up / Toggle State (Same as Tap)
+      app.ToggleChatState();
+
+      // 2. Play Shake Sound
+      app.Schedule([&app]() {
+        auto state = app.GetDeviceState();
+        if (state == kDeviceStateListening || state == kDeviceStateConnecting) {
+          app.PlaySound(Lang::Sounds::OGG_SHAKE);
+        }
+      });
+      break;
+    default:
+      break;
+    }
+  }
+}
 
 Application::Application() {
   event_group_ = xEventGroupCreate();
@@ -59,6 +106,11 @@ bool Application::SetDeviceState(DeviceState state) {
 }
 
 void Application::Initialize() {
+  // Ensure default event loop is created for IMU and other system events
+  if (esp_event_loop_create_default() != ESP_OK) {
+    // Ignore error if already created
+  }
+
   auto &board = Board::GetInstance();
   SetDeviceState(kDeviceStateStarting);
 
@@ -72,6 +124,27 @@ void Application::Initialize() {
   auto codec = board.GetAudioCodec();
   audio_service_.Initialize(codec);
   audio_service_.Start();
+
+  /* Initialize the IMU AI Library (Refactored) */
+  auto i2c_bus = Board::GetInstance().GetI2cMasterBusHandle();
+  if (i2c_bus) {
+    imu_ai_config_t imu_cfg = {
+        .i2c_bus_handle = (i2c_master_bus_handle_t)i2c_bus,
+        .i2c_addr = 0x68,    // ICM-42670-P default
+        .enable_cli = false, // Disable CLI to avoid conflict with console
+        .default_threshold = 0.90f};
+    if (imu_ai_init(&imu_cfg) == ESP_OK) {
+      ESP_ERROR_CHECK(imu_ai_register_event_handler(imu_event_handler, NULL));
+      ESP_ERROR_CHECK(imu_ai_start(5, 1)); // Priority 5, Core 1
+      ESP_LOGI(TAG, "IMU AI Service Started");
+    } else {
+      ESP_LOGE(TAG, "Failed to initialize IMU AI");
+    }
+  } else {
+    ESP_LOGE(TAG, "I2C Bus not available for IMU");
+  }
+
+  /* Start the main loop */
 
   AudioServiceCallbacks callbacks;
   callbacks.on_send_queue_available = [this]() {
@@ -465,10 +538,10 @@ void Application::CheckNewVersion() {
     for (int i = 0; i < 10; ++i) {
       ESP_LOGI(TAG, "Activating... %d/%d", i + 1, 10);
       esp_err_t err = ota_->Activate();
-      if (err == ESP_OK) {
-        break;
-      } else if (err == ESP_ERR_TIMEOUT) {
+      if (err == ESP_ERR_TIMEOUT) {
         vTaskDelay(pdMS_TO_TICKS(3000));
+      } else if (err == ESP_OK) {
+        break;
       } else {
         vTaskDelay(pdMS_TO_TICKS(10000));
       }
@@ -805,23 +878,12 @@ void Application::HandleWakeWordDetectedEvent() {
 
     auto wake_word = audio_service_.GetLastWakeWord();
     ESP_LOGI(TAG, "Wake word detected: %s", wake_word.c_str());
-#if CONFIG_SEND_WAKE_WORD_DATA
-    // Encode and send the wake word data to the server
-    while (auto packet = audio_service_.PopWakeWordPacket()) {
-      protocol_->SendAudio(std::move(packet));
-    }
-    // Set the chat state to wake word detected
-    protocol_->SendWakeWordDetected(wake_word);
-    SetListeningMode(aec_mode_ == kAecOff ? kListeningModeAutoStop
-                                          : kListeningModeRealtime);
-#else
     // Set flag to play popup sound after state changes to listening
     // (PlaySound here would be cleared by ResetDecoder in
     // EnableVoiceProcessing)
     play_popup_on_listening_ = true;
     SetListeningMode(aec_mode_ == kAecOff ? kListeningModeAutoStop
                                           : kListeningModeRealtime);
-#endif
   } else if (state == kDeviceStateSpeaking) {
     AbortSpeaking(kAbortReasonWakeWordDetected);
   } else if (state == kDeviceStateActivating) {
@@ -880,9 +942,12 @@ void Application::HandleStateChangedEvent() {
     if (listening_mode_ != kListeningModeRealtime) {
       audio_service_.EnableVoiceProcessing(false);
       // Only AFE wake word can be detected in speaking mode
-      audio_service_.EnableWakeWordDetection(audio_service_.IsAfeWakeWord());
+      // FORCE DISABLE for debugging
+      audio_service_.EnableWakeWordDetection(false);
     }
     audio_service_.ResetDecoder();
+    // FIXME: Temporarily disable self-interruption (Wake Word) to debug
+    // instantaneous aborts audio_service_.SetWakeWordDetectionEnabled(true);
     break;
   case kDeviceStateWifiConfiguring:
     audio_service_.EnableVoiceProcessing(false);
@@ -892,6 +957,12 @@ void Application::HandleStateChangedEvent() {
     // Do nothing
     break;
   }
+  // FIXME: Temporarily disable self-interruption (Wake Word) to debug
+  // instantaneous aborts if (new_state == kDeviceStateSpeaking) {
+  //   audio_service_.SetWakeWordDetectionEnabled(true);
+  // } else {
+  //   audio_service_.SetWakeWordDetectionEnabled(false);
+  // }
 }
 
 void Application::Schedule(std::function<void()> &&callback) {
@@ -1005,23 +1076,12 @@ void Application::WakeWordInvoke(const std::string &wake_word) {
     }
 
     ESP_LOGI(TAG, "Wake word detected: %s", wake_word.c_str());
-#if CONFIG_USE_AFE_WAKE_WORD || CONFIG_USE_CUSTOM_WAKE_WORD
-    // Encode and send the wake word data to the server
-    while (auto packet = audio_service_.PopWakeWordPacket()) {
-      protocol_->SendAudio(std::move(packet));
-    }
-    // Set the chat state to wake word detected
-    protocol_->SendWakeWordDetected(wake_word);
-    SetListeningMode(aec_mode_ == kAecOff ? kListeningModeAutoStop
-                                          : kListeningModeRealtime);
-#else
     // Set flag to play popup sound after state changes to listening
     // (PlaySound here would be cleared by ResetDecoder in
     // EnableVoiceProcessing)
     play_popup_on_listening_ = true;
     SetListeningMode(aec_mode_ == kAecOff ? kListeningModeAutoStop
                                           : kListeningModeRealtime);
-#endif
   } else if (state == kDeviceStateSpeaking) {
     Schedule([this]() { AbortSpeaking(kAbortReasonNone); });
   } else if (state == kDeviceStateListening) {
@@ -1099,4 +1159,25 @@ void Application::ResetProtocol() {
     // Reset protocol
     protocol_.reset();
   });
+}
+
+void Application::InjectPrompt(const std::string &prompt) {
+  if (protocol_) {
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "session_id",
+                            protocol_->session_id().c_str());
+    cJSON_AddStringToObject(root, "type", "listen");
+    cJSON_AddStringToObject(root, "state", "detect");
+    cJSON_AddStringToObject(root, "text", prompt.c_str());
+
+    char *json_str = cJSON_PrintUnformatted(root);
+    std::string message(json_str);
+    cJSON_free(json_str);
+    cJSON_Delete(root);
+
+    ESP_LOGI(TAG, "Injecting prompt: %s", message.c_str());
+    protocol_->SendText(message);
+  } else {
+    ESP_LOGW(TAG, "Protocol not ready, cannot inject prompt");
+  }
 }
