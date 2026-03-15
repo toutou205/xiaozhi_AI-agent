@@ -11,6 +11,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
+      - name: Create Dummy Assets
+        run: |
+          mkdir -p scripts/spiffs_assets/build
+          touch scripts/spiffs_assets/build/assets.bin
+
       - name: Build with ESP-IDF
         uses: espressif/esp-idf-ci-action@v1
         with:
@@ -18,3 +23,10 @@ jobs:
           target: esp32s3               # esp-box-3 搭载的是 esp32s3
           path: '.'
           command: 'python scripts/release.py esp-box-3' # 使用你工程自有的编译发布脚本
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xiaozhi_esp-box-3_${{ github.sha }}.bin
+          path: build/merged-binary.bin
+          if-no-files-found: warn
