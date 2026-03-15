@@ -1,0 +1,2 @@
+dependencies:
+  espressif/icm42670: "^1.0.0"
