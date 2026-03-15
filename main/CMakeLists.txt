@@ -722,6 +722,7 @@ endif()
 idf_component_register(SRCS ${SOURCES}
                     EMBED_FILES ${LANG_SOUNDS} ${COMMON_SOUNDS}
                     INCLUDE_DIRS ${INCLUDE_DIRS}
+                    # Documentation: dependencies below added for ESP-IDF v5.5 compatibility
                     PRIV_REQUIRES imu_streamer esp_hw_support esp_psram esp_app_format spi_flash app_update efuse
                     WHOLE_ARCHIVE
                     )
