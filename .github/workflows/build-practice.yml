@@ -1,0 +1,20 @@
+name: ESP32 Practice Build
+
+on:
+  push:
+    branches: [ "feature/ci-practice" ] # 仅触发此练习分支的 push
+
+jobs:
+  build_project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Build with ESP-IDF
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5         # 适配你当前工程使用的 v5.5
+          target: esp32s3               # esp-box-3 搭载的是 esp32s3
+          path: '.'
+          command: 'python scripts/release.py esp-box-3' # 使用你工程自有的编译发布脚本
