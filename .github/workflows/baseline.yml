@@ -1,0 +1,77 @@
+name: Baseline and Quality Validation
+
+on:
+  push:
+    branches: [ "feature/ci-practice" ] # 改为实践分支加快测试
+  pull_request:
+    branches: [ "feature/ci-practice" ]
+
+jobs:
+  build_and_analyze:
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:release-v5.5 # 钉死 v5.5 版本防止环境不一致
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      # ---------------- 新增：静态扫描工具链安装 ----------------
+      - name: Install Static Analysis Tools
+        run: |
+          apt-get update
+          apt-get install -y cppcheck clang-format
+
+      # ---------------- 新增：代码排版格式化检查 ----------------
+      - name: Check Code Formatting (Clang-Format)
+        run: |
+          # 检查 main 目录下的 .c, .cpp, .h 文件排版
+          find main/ -name "*.c" -o -name "*.cpp" -o -name "*.h" | xargs clang-format --dry-run -Werror
+
+      # ---------------- 新增：资产虚拟生成 (避免找不到 assets) ----------------
+      - name: Create Dummy Assets
+        run: |
+          mkdir -p scripts/spiffs_assets/build
+          touch scripts/spiffs_assets/build/assets.bin
+
+      # ---------------- 生成编译数据库 (用于准确扫描) ----------------
+      - name: Generate Compile Commands
+        run: |
+          . /opt/esp/idf/export.sh
+          # 快速配置生成 build/compile_commands.json
+          idf.py reconfigure
+
+      # ---------------- 新增：Cppcheck 扫描 (优化精确版) ----------------
+      - name: Run Cppcheck (With Compile Commands)
+        run: |
+          # 使用 --project 继承编译路径，--inline-suppr 支持代码行内屏蔽警告
+          cppcheck --project=build/compile_commands.json \
+                   --inline-suppr \
+                   --enable=all \
+                   --error-exitcode=1 \
+                   --force \
+                   main/
+
+      # ---------------- 保持原有：编译固件 ----------------
+      - name: Build Project
+        run: |
+          . /opt/esp/idf/export.sh
+          idf.py build
+          
+      # ---------------- 保持原有：内存与 Flash 占用分析 ----------------
+      - name: Run esp-idf-size (Memory Analysis)
+        run: |
+          . /opt/esp/idf/export.sh
+          # 使用 idf.py size 生成人类可读报告
+          idf.py size
+          # 额外生成一份 JSON 格式的报告文件用于后续存档或分析
+          idf.py size --format=json > size_report.json
+
+      # ---------------- 新增：归档分析报告 ----------------
+      - name: Upload Size Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32-memory-size-report
+          path: size_report.json
