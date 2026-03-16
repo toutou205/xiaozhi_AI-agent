@@ -83,7 +83,7 @@ static void print_usb(const char *format, ...) {
 // tuning or remove it if too complex. Let's keep the core parsing logic but
 // simplify integration.
 
-static bool parse_value(char *token, float *f_val, int *i_val) {
+static bool parse_value(const char *token, float *f_val, int *i_val) {
   if (!token)
     return false;
   *f_val = atof(token);
@@ -91,8 +91,9 @@ static bool parse_value(char *token, float *f_val, int *i_val) {
   return true;
 }
 
-static void handle_config_cmd(char *cmd, char *param, char *val_str,
-                              ClassConfig *cfg, const char *name) {
+static void handle_config_cmd(const char *cmd, const char *param,
+                              const char *val_str, ClassConfig *cfg,
+                              const char *name) {
   float f_val;
   int i_val;
   if (!parse_value(val_str, &f_val, &i_val))
@@ -135,7 +136,7 @@ static void process_line(char *line) {
     if (p && v)
       handle_config_cmd(cmd, p, v, &inf_config.idle_cfg, "Idle");
   } else if (strcmp(cmd, "debug") == 0) {
-    char *v = strtok(NULL, " ");
+    const char *v = strtok(NULL, " ");
     if (v) {
       if (strcmp(v, "on") == 0) {
         g_raw_debug_mode = true;
@@ -182,11 +183,11 @@ static void process_line(char *line) {
 static void check_usb_input() {
   if (!g_config.enable_cli)
     return;
-  static char line_buffer[128];
-  static int line_pos = 0;
   uint8_t data[64];
   int len = usb_serial_jtag_read_bytes(data, sizeof(data), 0);
   if (len > 0) {
+    static char line_buffer[128];
+    static int line_pos = 0;
     usb_serial_jtag_write_bytes(data, len, 0); // Echo
     for (int i = 0; i < len; i++) {
       if (data[i] == '\n' || data[i] == '\r') {
