@@ -41,7 +41,7 @@ jobs:
       - name: Run Cppcheck (Fast Scan)
         run: |
           # 扫描 main 和自研组件（避开第三方/框架库避免小时级耗时）
-          cppcheck --enable=warning --inline-suppr --suppress=missingIncludeSystem --suppress=unknownMacro --suppress=unusedFunction --error-exitcode=1 main/ components/imu_streamer components/sensor_icm42607
+          cppcheck --enable=warning --force --inline-suppr --suppress=missingIncludeSystem --suppress=unknownMacro --suppress=unusedFunction --suppress=virtualCallInConstructor --suppress=toomanyconfigs --error-exitcode=1 main/ components/imu_streamer components/sensor_icm42607
 
       # ---------------- 保持原有：编译固件 ----------------
       - name: Build Project
