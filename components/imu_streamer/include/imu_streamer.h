@@ -4,7 +4,6 @@
 #include "esp_err.h"
 #include "esp_event.h"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
