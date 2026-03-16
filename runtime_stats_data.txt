@@ -1,0 +1,21 @@
+RUN_TIME_STATS:
+imu_ai_task     13648707                16%
+opus_codec      17392467                21%
+resource_monito 38435           <1%
+IDLE0           35673317                44%
+IDLE1           50179255                62%
+taskLVGL        594501          <1%
+mqtt_task       441197          <1%
+audio_input     35154786                43%
+tiT             522061          <1%
+ipc0            28325           <1%
+audio_detection 2282083         2%
+sys_evt         10916           <1%
+udp_receive     311463          <1%
+main            1228239         1%
+audio_communica 874122          1%
+audio_output    262280          <1%
+wifi            1371980         1%
+esp_timer       874518          1%
+Tmr Svc         11              <1%
+ipc1            34053           <1%

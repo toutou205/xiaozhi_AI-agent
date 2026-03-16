@@ -1,113 +1,157 @@
-# Xiaozhi AI Interaction Architecture
+# System Architecture & Topology
 
-This document illustrates the system architecture and interaction flow between the local ESP32-S3-BOX-3 hardware and the Xiaozhi AI Cloud.
+## 1. System Topology Overview
 
-## 1. High-Level System Overview
-
-The system uses a hybrid protocol approach:
-- **MQTT**: Used for control signaling, session management, and text data (STT/LLM responses).
-- **UDP**: Used for real-time, low-latency, encrypted audio streaming (Upstream & Downstream).
+The Xiaozhi ESP32 client is designed with a layered architecture, centering around a singleton `Application` controller that orchestrates data flow between the Hardware Abstraction Layer (HAL), Audio Services, and Network Protocols.
 
 ```mermaid
 graph TD
-    subgraph "Local Hardware (ESP32-S3-BOX-3)"
-        Driver[Hardware Drivers]
-        App[Application Logic]
-        Audio[Audio Service]
-        Proto[Protocol Layer]
+    %% (0) Style Definitions
+    classDef hardware fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef core fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    classDef service fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px;
+    classDef cloud fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;
+
+    %% (1) Hardware Specifics
+    subgraph Hardware_Layer ["(1) Hardware Layer <br/> "]
+        direction TB
+        MainBoard["ESP32-S3 Board"]:::hardware
+        Peripherals["Peripherals"]:::hardware
+        IMU["IMU Sensor"]:::hardware
+    end
+
+    %% (2) Board Abstraction Layer (HAL)
+    subgraph HAL ["(2) Board Abstraction Layer <br/> "]
+        direction TB
+        Board_Factory["Board Factory"]:::service
+        I_Display["Display Interface"]:::service
+        I_Audio["Audio Codec Interface"]:::service
+        I_Network["Network Interface"]:::service
         
-        Driver <--> Audio
-        Audio <--> App
-        App <--> Proto
+        Board_Factory --> I_Display
+        Board_Factory --> I_Audio
+        Board_Factory --> I_Network
     end
 
-    subgraph "Xiaozhi AI Cloud"
-        MqttBroker[MQTT Broker]
-        AudioServer[Audio Server]
-        Core[AI Core Service]
+    %% (3) Application Core
+    subgraph Core_Logic ["(3) Application Core <br/> "]
+        direction TB
+        App["Application (Singleton)"]:::core
+        EventQueue["Main Event Loop"]:::core
+        StateMachine["Device State Machine"]:::core
         
-        MqttBroker <--> Core
-        AudioServer <--> Core
+        App --> EventQueue
+        App --> StateMachine
     end
 
-    Proto -- "MQTT (JSON Control/Text)" --> MqttBroker
-    Proto -- "UDP (Opus Encoded Audio)" --> AudioServer
-```
-
-## 2. Audio Pipeline & Wake Word Detection (Local)
-
-This diagram details the local processing flow from microphone input to audio transmission. The **Wake Word Engine** runs locally on the ESP32 for low-latency activation.
-
-```mermaid
-graph LR
-    %% (1) Hardware Input Layer
-    Mic["Microphone (I2S)"] --> |"Raw PCM"| Codec["Audio Codec (ES7210)"]
-    Codec --> |"Input Task"| AFE["AFE Audio Processor"]
-    
-    %% (2) ESP-SR Local Processing
-    subgraph ESP_SR ["(2) ESP-SR (Local Processing) <br/> "]
-        AFE --> |"Processed Audio"| WakeNet["Wake Word Engine"]
-        AFE --> |"Voice Activity"| VAD["VAD Detector"]
+    %% (4) System Services
+    subgraph Services ["(4) System Services <br/> "]
+        direction TB
+        AudioService["Audio Service"]:::service
+        McpServer["MCP Server"]:::service
+        OTA["OTA & Version Manager"]:::service
+        Assets["Asset Manager"]:::service
+        
+        AudioService -- "Voice Data" --> Protocol
+        McpServer -- "Tool Result" --> Protocol
     end
 
-    %% (3) Event & State Management
-    WakeNet --> |"Hi Xiaozhi"| AppEvent{Wake Event}
-    AppEvent -- "Start Listening" --> StateMgr["State Machine"]
+    %% (5) Communication Layer
+    subgraph Protocol_Layer ["(5) Communication Layer <br/> "]
+        direction TB
+        Protocol["Protocol Interface"]:::service
+        MqttImpl["MQTT Implementation"]:::service
+        WsImpl["WebSocket Implementation"]:::service
+        
+        MqttImpl -.-> Protocol
+        WsImpl -.-> Protocol
+    end
+
+    %% (6) Cloud Server
+    subgraph Cloud_Server ["(6) Cloud Server <br/> "]
+        Server["Xiaozhi Server"]:::cloud
+    end
+
+    %% Hardware to HAL
+    MainBoard --> Board_Factory
+    Peripherals --> Board_Factory
+    IMU -- "Events: Tap or Shake" --> App
+
+    %% HAL to Core
+    I_Network -- "Network Events" --> App
     
-    StateMgr --> |"If State=Listening"| Gate["Audio Gate"]
+    %% Core Orchestration
+    App -- "Init & Control" --> Board_Factory
+    App -- "Control: Start or Stop" --> AudioService
+    App -- "Send or Receive" --> Protocol
+    App -- "Register Tools" --> McpServer
+
+    %% Audio Flow
+    AudioService -- "PCM Playback" --> I_Audio
+    I_Audio -- "PCM Recording" --> AudioService
     
-    %% (4) Encoding & Transmission
-    AFE --> |"Clean Audio"| Gate
-    Gate --> |"Open"| Encoder["Opus Encoder"]
-    Encoder --> |"Encoded Packets"| Queue["Send Queue"]
-    Queue --> |"UDP Transport"| Cloud((Cloud))
+    %% Server Comms
+    Protocol <-->|"(6) JSON Control and Bin Audio"| Server
 ```
 
-## 3. Full Interaction Loop (Workflow)
+## 2. Core Modules Breakdown
 
-This sequence diagram illustrates the lifecycle of a complete voice interaction: from waking up to receiving a response.
+### 2.1 Application Core (`main/application.cc`)
+The `Application` class implements the Singleton pattern and serves as the central nervous system of the device.
+- **Event Loop**: It maintains a FreeRTOS `EventGroup` to handle asynchronous events (Network, Audio, Buttons, IMU) in a non-blocking manner (`Application::Run`).
+- **State Machine**: Manages logical states (Idle, Listening, Speaking, Connecting) via `DeviceStateMachine`, ensuring valid transitions.
+- **Orchestration**: Directs the flow of data. For example, when the Wake Word is detected, it transitions the state to `Listening` and commands the `AudioService` to stream data to the `Protocol` layer.
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant ESP as ESP32 (Local)
-    participant MQTT as Cloud (MQTT)
-    participant UDP as Cloud (UDP - Audio)
+### 2.2 Board Abstraction Layer (`main/boards/`)
+To support the diverse range of hardware (ESP32-S3-BOX, generic dev kits, proprietary boards), the system uses a Factory Pattern.
+- **`Board` Base Class**: Defines virtual methods for `GetDisplay()`, `GetAudioCodec()`, `GetNetwork()`, etc.
+- **Concrete Implementations**:
+  - `WifiBoard`: Standard WiFi-based boards.
+  - `Ml307Board`: Cellular (4G) based boards.
+- **Build System Integration**: `CMakeLists.txt` dynamically selects the implementation based on `CONFIG_BOARD_TYPE`.
 
-    Note over User, ESP: 1. Wake Up
-    User->>ESP: "Hi Xiaozhi" (Wake Word)
-    ESP->>ESP: Local WakeNet Detects
-    ESP->>ESP: State -> Listening
-    ESP->>User: Play "Ding" Sound
-    ESP->>MQTT: {"type": "hello"} (Open Session)
-    MQTT-->>ESP: Session Ready (Server IP/Port)
-    
-    Note over User, ESP: 2. Request
-    User->>ESP: "What is the weather?"
-    activate ESP
-    ESP->>UDP: Stream Opus Audio Packets >>
-    ESP->>ESP: VAD detects silence (End of Speech)
-    ESP->>MQTT: {"type": "stop"} (End of Speech)
-    deactivate ESP
-    ESP->>ESP: State -> Processing
+### 2.3 Audio Service (`main/audio/`)
+The `AudioService` handles the complex pipeline of voice interaction.
+- **Dual-Task Architecture**:
+  - **Input Task**: Captures raw PCM from `AudioCodec` -> Processors (AEC, AGC, VAD, NS) -> `Encoder` -> Protocol Send Queue.
+  - **Output Task**: Protocol Decode Queue -> `Decoder` -> Resampler -> `AudioCodec` Playback.
+- **Codecs**: Supports Opus for efficient network transmission.
+- **Wake Word**: Runs a lightweight edge-inference model (ESP-SR or custom) to detect activation phrases ("Xiaozhi").
 
-    Note over UDP, MQTT: 3. Cloud Processing (ASR + LLM)
-    MQTT-->>ESP: {"type": "stt", "text": "What is the weather?"}
-    ESP->>User: Display User Text
+### 2.4 Communication Protocol (`main/protocols/`)
+Abstracts the transport layer, supporting both MQTT and WebSocket.
+- **Unified Interface**: `Protocol` class defines `SendAudio`, `SendText`, `OnIncomingAudio`, etc.
+- **Data Encapsulation**:
+  - **Control Plane**: JSON messages for state sync, TTS text, STT results, and MCP tool calls.
+  - **Data Plane**: Binary Opus packets for real-time low-latency audio streaming.
 
-    Note over UDP, MQTT: 4. Response
-    MQTT-->>ESP: {"type": "llm", "emotion": "happy"}
-    ESP->>User: Update Face Expression
-    
-    MQTT-->>ESP: {"type": "tts", "state": "start"}
-    ESP->>ESP: State -> Speaking
-    
-    udp-->>ESP: << Stream Opus Audio (TTS) <<
-    ESP->>User: Play Audio Response
-    MQTT-->>ESP: {"type": "tts", "text": "It is sunny today."}
-    ESP->>User: Display Assistant Text
-    
-    UDP-->>ESP: Audio Stream End
-    MQTT-->>ESP: {"type": "tts", "state": "stop"}
-    ESP->>ESP: State -> Idle (or Listening if Continuous)
-```
+### 2.5 MCP (Model Context Protocol) Server (`main/mcp_server.cc`)
+Enables the AI agent to interact with the device's physical capabilities.
+- **Tool Registration**: Modules register capabilities (e.g., "turn_on_light", "get_battery") as tools.
+- **JSON Schema**: Generates tool definitions dynamically to send to the AI model.
+- **Execution**: when the Server sends a tool call request, `McpServer` looks up the callback and executes it, returning the result.
+
+### 2.6 IMU Gesture Intelligence (`components/imu_streamer/`)
+Uses the 6-axis IMU (ICM-42670-P) for local interaction.
+- **Gesture Detection**: Direct integration of motion algorithms to detect Tap and Shake events.
+- **Event Injection**: Injects events into the main `Application` event loop to trigger Wake-up or Interrupt actions without network dependency.
+
+## 3. Data Flow Example: "Voice Interaction"
+
+1.  **Wake Up**:
+    *   User says "Xiaozhi".
+    *   `AudioService` detects Wake Word -> Signals `Application`.
+    *   `Application` plays "Ding" sound -> Sets State to `Listening`.
+2.  **Streaming**:
+    *   `AudioService` starts encoding Mic data -> Pushes to Send Queue.
+    *   `Application` creates `Protocol` packet -> Sends to Server.
+3.  **Processing**:
+    *   Server processes Audio -> Returns STT text (JSON).
+    *   `Application` displays User text on Screen.
+4.  **Response**:
+    *   Server sends TTS start command + Audio Stream.
+    *   `Protocol` receives Audio -> Pushes to Decode Queue.
+    *   `AudioService` decodes -> Plays on Speaker.
+5.  **Execution (Optional)**:
+    *   If user asked "Turn on light", Server sends MCP JSON.
+    *   `McpServer` executes generic GPIO tool -> Light turns on.

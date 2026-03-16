@@ -30,3 +30,4 @@ jobs:
           name: xiaozhi_esp-box-3_${{ github.sha }}.bin
           path: build/merged-binary.bin
           if-no-files-found: warn
+

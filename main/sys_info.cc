@@ -22,7 +22,6 @@
 #include <string>
 #include <vector>
 
-
 #define TAG "SystemInfo"
 
 size_t SystemInfo::GetFlashSize() {
@@ -131,7 +130,7 @@ esp_err_t SystemInfo::PrintTaskCpuUsage(TickType_t xTicksToWait) {
           (task_elapsed_time * 100UL) /
           (total_elapsed_time * CONFIG_FREERTOS_NUMBER_OF_CORES);
       printf("| %-16s | %8lu | %4lu%%\n", start_array[i].pcTaskName,
-             task_elapsed_time, percentage_time);
+             (unsigned long)task_elapsed_time, (unsigned long)percentage_time);
     }
   }
 

@@ -1,0 +1,28 @@
+--- BEGIN RESOURCE LOG ---
+HEAP_INT_TOTAL: 357747
+HEAP_INT_FREE: 65339
+HEAP_INT_MAX_BLOCK: 57344
+HEAP_EXT_FREE: 15854816
+TASK_LIST:
+main            R       1       1364    4
+taskLVGL        R       1       3412    9
+resource_monito X       1       2828    16
+IDLE0           R       0       732     5
+IDLE1           R       0       724     6
+mqtt_task       B       5       1352    20
+audio_output    B       4       2696    11
+audio_input     B       8       1884    10
+tiT             B       18      1308    14
+Tmr Svc         B       1       1404    7
+ipc1            S       24      556     2
+audio_detection B       3       1836    22
+sys_evt         B       20      1368    8
+udp_receive     B       1       736     23
+wifi            B       23      3528    15
+esp_timer       S       22      2644    3
+audio_communica B       3       2668    24
+opus_codec      B       2       1016    12
+imu_ai_task     B       5       2100    13
+ipc0            S       24      548     1
+--- END RESOURCE LOG ---
+I (156810) SystemInfo: free sram: 65339 minimal sram: 56911

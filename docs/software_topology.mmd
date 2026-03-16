@@ -1,0 +1,72 @@
+graph TD
+    %% For a detailed guide on how to read this diagram, see: docs/software_topology_reading_guide.md
+    %% Define Styles
+    classDef highPriority fill:#ffcccc,stroke:#ff0000,stroke-width:2px;
+    classDef mediumPriority fill:#ffffcc,stroke:#aaaa00,stroke-width:2px;
+    classDef lowPriority fill:#ccffcc,stroke:#00aa00,stroke-width:2px;
+    classDef sysPriority fill:#e6e6fa,stroke:#4b0082,stroke-width:2px;
+    classDef queue fill:#e1ecf4,stroke:#7aa1c6,stroke-width:2px,stroke-dasharray: 5, 5;
+    classDef hw fill:#f0f0f0,stroke:#333333,stroke-width:2px,shape:hexagon;
+
+    %% Subgraphs for Logical Grouping (Core affinity inference: System vs App)
+    subgraph System [System & Network Layer]
+        direction TB
+        Wifi[wifi<br/>Prio:23<br/>CPU:<1%]:::sysPriority
+        TiT[tiT LwIP<br/>Prio:18<br/>CPU:<1%]:::sysPriority
+        SysEvt[sys_evt<br/>Prio:20<br/>CPU:<1%]:::sysPriority
+        EspTimer[esp_timer<br/>Prio:22<br/>CPU:<1%]:::sysPriority
+        Mqtt[mqtt_task<br/>Prio:5<br/>CPU:<1%]:::mediumPriority
+        Resource[resource_monitor<br/>Prio:1]:::lowPriority
+    end
+
+    subgraph AudioAI [Audio & AI Processing Layer]
+        direction TB
+        AudioInput[audio_input<br/>Prio:8<br/>CPU:43%]:::highPriority
+        AudioDet[audio_detection<br/>Prio:3<br/>CPU:15%]:::highPriority
+        Opus[opus_codec<br/>Prio:2<br/>CPU:21%]:::lowPriority
+        AudioOut[audio_output<br/>Prio:4<br/>CPU:<1%]:::mediumPriority
+        ImuAI[imu_ai_task<br/>Prio:5<br/>CPU:16%]:::mediumPriority
+    end
+
+    subgraph AppLogic [Application Logic Layer]
+        direction TB
+        Main[main<br/>Prio:1<br/>CPU:<1%]:::lowPriority
+        LVGL[taskLVGL<br/>Prio:1<br/>CPU:<1%]:::lowPriority
+        TmrSvc[Tmr Svc<br/>Prio:1<br/>CPU:<1%]:::lowPriority
+    end
+
+    %% Hardware Nodes
+    Mic((Microphone)):::hw
+    Speaker((Speaker)):::hw
+    IMU((IMU Sensor)):::hw
+    Display((Display)):::hw
+    Radio((WiFi/BT)):::hw
+
+    %% IPC Objects (Conceptual)
+    AudioQ[Audio Queue]:::queue
+    EvtGrp[Event Group]:::queue
+    
+    %% Relationships & Data Flow
+    Mic -->|I2S| AudioInput
+    AudioInput -->|PCM Streaming| AudioDet
+    AudioInput -->|PCM Streaming| Opus
+    Opus -->|Encoded Data| Mqtt
+    Mqtt <-->|TCP/IP| TiT
+    TiT <-->|802.11| Wifi
+    Wifi <-->|RF| Radio
+
+    AudioDet -->|VAD/Wake Event| Main
+    ImuAI -->|Activity Data| Main
+    IMU -->|I2C| ImuAI
+
+    Main -->|UI State| LVGL
+    LVGL -->|Flush| Display
+    Main -->|Audio Feedback| AudioOut
+    AudioOut -->|I2S| Speaker
+
+    %% System Control
+    SysEvt -.->|System Events| Main
+    EspTimer -.->|Callbacks| Main
+
+    %% Notes
+    click Im "High CPU Load - Optimization Candidate"

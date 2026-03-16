@@ -521,8 +521,8 @@ int Blufi::_aes_encrypt(uint8_t iv8, uint8_t *crypt_data, int crypt_len) {
 
 int Blufi::_aes_decrypt(uint8_t iv8, uint8_t *crypt_data, int crypt_len) {
   if (!m_sec || !m_sec->aes || !crypt_data || crypt_len < 0) {
-    ESP_LOGE(BLUFI_TAG, "Invalid parameters for AES decryption %p %p %d",
-             m_sec->aes, crypt_data, crypt_len);
+    ESP_LOGE(BLUFI_TAG, "Invalid parameters for AES decryption %p %p %d", m_sec,
+             crypt_data, crypt_len);
     return -ESP_ERR_INVALID_ARG;
   }
 
