@@ -5,6 +5,7 @@ on:
     branches: [ "feature/ci-practice" ] # 改为实践分支加快测试
   pull_request:
     branches: [ "feature/ci-practice" ]
+  workflow_dispatch: # 启用手动触发
 
 jobs:
   build_and_analyze:
