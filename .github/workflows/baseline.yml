@@ -36,23 +36,11 @@ jobs:
           mkdir -p scripts/spiffs_assets/build
           touch scripts/spiffs_assets/build/assets.bin
 
-      # ---------------- 生成编译数据库 (用于准确扫描) ----------------
-      - name: Generate Compile Commands
+      # ---------------- 新增：Cppcheck 扫描 (极速版) ----------------
+      - name: Run Cppcheck (Fast Scan)
         run: |
-          . /opt/esp/idf/export.sh
-          # 快速配置生成 build/compile_commands.json
-          idf.py reconfigure
-
-      # ---------------- 新增：Cppcheck 扫描 (优化精确版) ----------------
-      - name: Run Cppcheck (With Compile Commands)
-        run: |
-          # 使用 --project 继承编译路径，--inline-suppr 支持代码行内屏蔽警告
-          cppcheck --project=build/compile_commands.json \
-                   --inline-suppr \
-                   --enable=all \
-                   --error-exitcode=1 \
-                   --force \
-                   main/
+          # 扫描 main 和自研组件（避开第三方/框架库避免小时级耗时）
+          cppcheck --enable=all --inline-suppr --error-exitcode=1 main/ components/imu_streamer components/sensor_icm42607
 
       # ---------------- 保持原有：编译固件 ----------------
       - name: Build Project
