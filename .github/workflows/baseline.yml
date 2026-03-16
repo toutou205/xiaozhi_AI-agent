@@ -47,6 +47,7 @@ jobs:
       - name: Build Project
         run: |
           . /opt/esp/idf/export.sh
+          idf.py set-target esp32s3
           idf.py build
           
       # ---------------- 保持原有：内存与 Flash 占用分析 ----------------
