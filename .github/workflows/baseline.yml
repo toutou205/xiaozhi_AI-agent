@@ -12,6 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: espressif/idf:release-v5.5 # 钉死 v5.5 版本防止环境不一致
+    env:
+      IDF_CCACHE_ENABLE: 1
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
 
     steps:
       - name: Checkout repository
@@ -19,11 +22,20 @@ jobs:
         with:
           submodules: true
 
+      # ---------------- 新增：Ccache 缓存加速 ----------------
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ${{ runner.os }}-ccache-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-
+
       # ---------------- 新增：静态扫描工具链安装 ----------------
       - name: Install Static Analysis Tools
         run: |
           apt-get update
-          apt-get install -y cppcheck clang-format
+          apt-get install -y cppcheck clang-format ccache
 
       # ---------------- 新增：代码排版格式化检查 ----------------
       - name: Check Code Formatting (Clang-Format)
@@ -59,7 +71,27 @@ jobs:
           # 额外生成一份 JSON 格式的报告文件用于后续存档或分析
           idf.py size --format=json > size_report.json
 
-      # ---------------- 新增：归档分析报告 ----------------
+      # ---------------- 新增：自动合并二进制文件 ----------------
+      - name: Merge Binaries (Using flash_args)
+        run: |
+          . /opt/esp/idf/export.sh
+          cd build
+          sed -i 's/--flash_size detect/--flash_size keep/g' flash_args
+          esptool.py --chip esp32s3 merge_bin -o merged-firmware.bin @flash_args
+
+      # ---------------- 新增：生成 summary 看板 ----------------
+      - name: Generate Visual Markdown Summary
+        run: |
+          python scripts/visual_report.py size_report.json >> $GITHUB_STEP_SUMMARY
+
+      # ---------------- 新增：归档合并后固件 ----------------
+      - name: Upload Merged Firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32-merged-firmware
+          path: build/merged-firmware.bin
+
+      # ---------------- 原有：归档分析报告 ----------------
       - name: Upload Size Report Artifact
         uses: actions/upload-artifact@v4
         with:
