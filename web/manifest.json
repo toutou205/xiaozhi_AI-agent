@@ -1,0 +1,16 @@
+{
+    "name": "Xiaozhi AI Agent Firmware",
+    "version": "Latest CI Build",
+    "chipFamily": "ESP32-S3",
+    "builds": [
+        {
+            "chipFamily": "ESP32-S3",
+            "parts": [
+                {
+                    "path": "merged-firmware.bin",
+                    "offset": 0
+                }
+            ]
+        }
+    ]
+}

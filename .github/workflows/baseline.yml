@@ -97,3 +97,18 @@ jobs:
         with:
           name: esp32-memory-size-report
           path: size_report.json
+
+      # ---------------- 新增：自动部署成果至 GitHub Pages ----------------
+      - name: Prepare Website Deploy Folder
+        run: |
+          mkdir -p deploy
+          cp web/index.html deploy/
+          cp web/manifest.json deploy/
+          cp build/merged-firmware.bin deploy/
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: deploy
+          branch: gh-pages
+          token: ${{ secrets.GITHUB_TOKEN }}
