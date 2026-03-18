@@ -104,7 +104,12 @@ jobs:
           mkdir -p deploy
           cp web/index.html deploy/
           cp web/manifest.json deploy/
-          cp build/merged-firmware.bin deploy/
+          # 复制各分区 Bin 文件满足 esp-web-tools 多组件要求
+          cp build/bootloader/bootloader.bin deploy/
+          cp build/partition_table/partition-table.bin deploy/
+          cp build/ota_data_initial.bin deploy/
+          cp build/xiaozhi.bin deploy/
+          cp build/generated_assets.bin deploy/
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
