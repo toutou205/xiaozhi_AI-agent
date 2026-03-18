@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Xiaozhi AI Agent - 一键 Web 烧录</title>
-    <!-- 引入流体现代字体 -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -46,45 +45,18 @@
             padding: 40px 30px;
             text-align: center;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .logo {
             font-size: 3rem;
             margin-bottom: 15px;
             display: inline-block;
-            animation: float 3s ease-in-out infinite;
-        }
-
-        @keyframes float {
-
-            0%,
-            100% {
-                transform: translateY(0);
-            }
-
-            50% {
-                transform: translateY(-8px);
-            }
         }
 
         h1 {
             font-size: 24px;
             font-weight: 600;
             margin: 0 0 10px 0;
-            letter-spacing: -0.5px;
             background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
             -webkit-background-clip: text;
             background-clip: text;
@@ -94,11 +66,9 @@
         p.desc {
             font-size: 14px;
             color: var(--text-muted);
-            line-height: 1.6;
             margin: 0 0 25px 0;
         }
 
-        /* 保留设置提示 */
         .nvs-safe {
             display: inline-flex;
             align-items: center;
@@ -110,17 +80,16 @@
             font-size: 12px;
             font-weight: 600;
             margin-bottom: 25px;
-            border: 1px solid rgba(0, 242, 254, 0.2);
         }
 
-        /* 配置选择面板 */
+        /* 配置控制面板 */
         .config-panel {
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 16px;
             padding: 18px;
             text-align: left;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .config-title {
@@ -134,35 +103,32 @@
         .radio-group {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         }
 
         .radio-label {
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.03);
             border-radius: 12px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
 
         .radio-label:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
         }
 
         .radio-label.active {
-            background: rgba(0, 242, 254, 0.05);
-            border-color: rgba(0, 242, 254, 0.3);
+            background: rgba(0, 242, 254, 0.04);
+            border-color: rgba(0, 242, 254, 0.2);
         }
 
         .radio-label input {
             accent-color: var(--accent-color);
-            width: 16px;
-            height: 16px;
         }
 
         .radio-content {
@@ -179,10 +145,10 @@
         .radio-desc {
             font-size: 11px;
             color: var(--text-muted);
-            margin-top: 2px;
+            margin-top: 1px;
         }
 
-        /* esp-web-tools 样式贯穿 */
+        /* esp-web-tools 注入点 */
         esp-web-install-button {
             display: block;
             margin: 0 auto;
@@ -199,20 +165,19 @@
             border-radius: 50px;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 8px 20px rgba(0, 242, 254, 0.3);
             width: 100%;
-            letter-spacing: 0.5px;
+            box-shadow: 0 8px 20px rgba(0, 242, 254, 0.3);
         }
 
         .btn-install:hover {
-            transform: translateY(-2px) scale(1.01);
-            box-shadow: 0 12px 25px rgba(0, 242, 254, 0.5);
+            transform: translateY(-1px);
+            box-shadow: 0 12px 25px rgba(0, 242, 254, 0.4);
         }
 
         .footer {
-            margin-top: 30px;
+            margin-top: 25px;
             font-size: 11px;
-            color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.2);
         }
     </style>
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
@@ -223,38 +188,63 @@
     <div class="container">
         <div class="logo">🤖</div>
         <h1>Xiaozhi AI Agent</h1>
-        <p class="desc">极客免驱版官网。连接电脑点击下方按钮开始轻量级刷机。</p>
+        <p class="desc">极客免驱一键刷机面板。</p>
 
         <div class="nvs-safe">
-            🔒 核心原理解析：分拆分区烧录，保护本地 NVS 配置/Wi-Fi
+            🔒 核心机制：精准覆写特定分区，避免全盘擦除
         </div>
 
-        <!-- 配置选择器 -->
+        <!-- 步骤 1: 固件类型 -->
         <div class="config-panel">
-            <span class="config-title">1. 请选择刷机类型</span>
-            <div class="radio-group" id="profile-container">
-
-                <label class="radio-label active" data-manifest="./manifest_app.json">
-                    <input type="radio" name="profile" value="./manifest_app.json" checked>
+            <span class="config-title">1. 选择固件类型 (Firmware)</span>
+            <div class="radio-group" id="type-container">
+                <label class="radio-label active" data-type="app">
+                    <input type="radio" name="firmware" value="app" checked>
                     <div class="radio-content">
                         <span class="radio-name">⚡ 极速更新 App (推荐)</span>
-                        <span class="radio-desc">只更新应用程序（约5秒），绝对保留Wi-Fi和密码</span>
+                        <span class="radio-desc">只更新程序包（约5秒），绝对保留 Wi-Fi 及设置</span>
                     </div>
                 </label>
-
-                <label class="radio-label" data-manifest="./manifest.json">
-                    <input type="radio" name="profile" value="./manifest.json">
+                <label class="radio-label" data-type="full">
+                    <input type="radio" name="firmware" value="full">
                     <div class="radio-content">
                         <span class="radio-name">📦 完整系统部署</span>
-                        <span class="radio-desc">覆写 App + Assets 静态区（约30秒），同样保留NVS设置</span>
+                        <span class="radio-desc">写入 Bootloader、分区表和 App（同样保留NVS）</span>
                     </div>
                 </label>
-
             </div>
         </div>
 
-        <!-- 核心烧录按钮组件，动态绑定 manifest -->
-        <esp-web-install-button id="install-btn" manifest="./manifest_app.json">
+        <!-- 步骤 2: 资产更换 -->
+        <div class="config-panel">
+            <span class="config-title">2. 选择资产配置 (Assets)</span>
+            <div class="radio-group" id="assets-container">
+                <label class="radio-label active" data-asset="default">
+                    <input type="radio" name="assets" value="default" checked>
+                    <div class="radio-content">
+                        <span class="radio-name">🖼️ 默认资产配置 (S3-Box 官方屏幕)</span>
+                        <span class="radio-desc">包纳默认包含的图标、离线包、音效</span>
+                    </div>
+                </label>
+                <label class="radio-label" data-asset="custom">
+                    <input type="radio" name="assets" value="custom">
+                    <div class="radio-content">
+                        <span class="radio-name">🎨 自定义包 (Placeholder)</span>
+                        <span class="radio-desc">可用于换肤或非标外设资产更新（8MB Offset）</span>
+                    </div>
+                </label>
+                <label class="radio-label" data-asset="none">
+                    <input type="radio" name="assets" value="none">
+                    <div class="radio-content">
+                        <span class="radio-name">🚫 不更新任何资产</span>
+                        <span class="radio-desc">只跑固件，完全不触碰 8MB 出厂资产区</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- 核心烧录按钮 -->
+        <esp-web-install-button id="install-btn">
             <button class="btn-install" slot="activate">⚡ 一键执行烧录</button>
         </esp-web-install-button>
 
@@ -264,28 +254,79 @@
     </div>
 
     <script>
-        // 绑定 Radio Click 联动更新 manifest
-        const container = document.getElementById('profile-container');
         const installBtn = document.getElementById('install-btn');
-        const labels = document.querySelectorAll('.radio-label');
+        const typeContainer = document.getElementById('type-container');
+        const assetsContainer = document.getElementById('assets-container');
 
-        container.addEventListener('change', (e) => {
-            if (e.target.name === 'profile') {
-                const selectedManifest = e.target.value;
+        // 单分区 Offset 设定
+        const PART_BOOTLOADER = { path: "bootloader.bin", offset: 0 };
+        const PART_TABLE = { path: "partition-table.bin", offset: 32768 };
+        const PART_OTADATA = { path: "ota_data_initial.bin", offset: 53248 };
+        const PART_APP = { path: "xiaozhi.bin", offset: 131072 };
 
-                // 更新 Button 容器 manifest 属性
-                installBtn.setAttribute('manifest', selectedManifest);
+        // 资产包路径绑定
+        const PART_ASSETS_DEFAULT = { path: "generated_assets.bin", offset: 8388608 };
+        const PART_ASSETS_CUSTOM = { path: "generated_assets.bin", offset: 8388608 }; // 此处为您替换自定义 Bin 的挂接点
 
-                // 切换样式 active
-                labels.forEach(label => {
-                    if (label.getAttribute('data-manifest') === selectedManifest) {
-                        label.classList.add('active');
-                    } else {
-                        label.classList.remove('active');
-                    }
-                });
+        function updateManifest() {
+            const fwType = document.querySelector('input[name="firmware"]:checked').value;
+            const assetType = document.querySelector('input[name="assets"]:checked').value;
+
+            // 1. 构建 parts 列表
+            let parts = [];
+
+            if (fwType === 'full') {
+                parts.push(PART_BOOTLOADER, PART_TABLE, PART_OTADATA);
             }
-        });
+            // 无论 full 还是 app 都要 app bin 
+            parts.push(PART_APP);
+
+            // 补充 资产包
+            if (assetType === 'default') {
+                parts.push(PART_ASSETS_DEFAULT);
+            } else if (assetType === 'custom') {
+                parts.push(PART_ASSETS_CUSTOM);
+            }
+
+            // 2. 组装 Manifest 结构
+            const manifestObj = {
+                name: "Xiaozhi AI Dynamic installer",
+                version: "v1.0-dynamic",
+                chipFamily: "ESP32-S3",
+                builds: [
+                    {
+                        chipFamily: "ESP32-S3",
+                        parts: parts
+                    }
+                ]
+            };
+
+            // 3. 动态转换 Blob URL 喂给 Button 组件
+            const blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/json' });
+            if (installBtn.hasAttribute('manifest')) {
+                URL.revokeObjectURL(installBtn.getAttribute('manifest')); // 释放旧内存
+            }
+            installBtn.setAttribute('manifest', URL.createObjectURL(blob));
+        }
+
+        // 常规样式联动
+        function initListeners(container) {
+            container.addEventListener('change', (e) => {
+                const labels = container.querySelectorAll('.radio-label');
+                labels.forEach(lb => {
+                    const inp = lb.querySelector('input');
+                    lb.classList.toggle('active', inp.checked);
+                });
+                updateManifest(); // 有变动即刻渲染
+            });
+        }
+
+        initListeners(typeContainer);
+        initListeners(assetsContainer);
+
+        // 初始首次渲染
+        updateManifest();
+
     </script>
 
 </body>
