@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xiaozhi AI Agent - 一键 Web 烧录</title>
+    <!-- 引入流体现代字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --accent-color: #00f2fe;
+            --secondary-color: #4facfe;
+            --text-main: #ffffff;
+            --text-muted: #8b9bb4;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(at 0% 0%, rgba(79, 172, 254, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(0, 242, 254, 0.15) 0px, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 480px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px 30px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: inline-block;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.desc {
+            font-size: 15px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin: 0 0 35px 0;
+            padding: 0 10px;
+        }
+
+        /* 极客感引导小贴士 */
+        .tips {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 16px;
+            padding: 15px;
+            margin-bottom: 35px;
+            font-size: 13px;
+            color: var(--text-muted);
+            text-align: left;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .tips ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .tips li {
+            margin-bottom: 6px;
+        }
+
+        .tips li::marker {
+            color: var(--accent-color);
+        }
+
+        /* esp-web-tools 样式贯穿 */
+        esp-web-install-button {
+            display: block;
+            margin: 0 auto;
+            --installer-back-color: transparent;
+        }
+
+        /* 隐藏原生默认按钮，用插槽定制 */
+        .btn-install {
+            background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(0, 242, 254, 0.3);
+            width: 100%;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-install:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 12px 25px rgba(0, 242, 254, 0.5);
+        }
+
+        .btn-install:active {
+            transform: translateY(0);
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+    <!-- 引入 Espressif 官方 Web 烧录组件 -->
+    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="logo">🤖</div>
+        <h1>Xiaozhi AI Agent</h1>
+        <p class="desc">极客免驱版。通过浏览器 Web Serial 能力直接拉取云端编译固件进行本地刷机。</p>
+
+        <div class="tips">
+            <ul>
+                <li>请使用基于 **Chromium** 开发的浏览器（如 Chrome / Edge）</li>
+                <li>使用 **数据线**（非充电线）将 ESP32-S3 BOARD 连接至电脑 USB</li>
+                <li>若烧录无响应，可按住 **BOOT** 键后再连接 USB 进入下载模式</li>
+            </ul>
+        </div>
+
+        <!-- 核心烧录按钮组件，指定 manifest -->
+        <esp-web-install-button manifest="./manifest.json">
+            <button class="btn-install" slot="activate">⚡ 一键烧录 (Install)</button>
+        </esp-web-install-button>
+
+        <div class="footer">
+            Powered by Espressif Web Tools & GitHub Actions
+        </div>
+    </div>
+
+</body>
+
+</html>
