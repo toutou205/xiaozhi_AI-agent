@@ -31,7 +31,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow: hidden;
+            overflow-y: auto;
+            padding: 40px 0;
         }
 
         .container {
@@ -91,36 +92,94 @@
         }
 
         p.desc {
-            font-size: 15px;
+            font-size: 14px;
             color: var(--text-muted);
             line-height: 1.6;
-            margin: 0 0 35px 0;
-            padding: 0 10px;
+            margin: 0 0 25px 0;
         }
 
-        /* 极客感引导小贴士 */
-        .tips {
-            background: rgba(255, 255, 255, 0.02);
-            border-radius: 16px;
-            padding: 15px;
-            margin-bottom: 35px;
-            font-size: 13px;
-            color: var(--text-muted);
-            text-align: left;
-            border: 1px solid rgba(255, 255, 255, 0.04);
-        }
-
-        .tips ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-
-        .tips li {
-            margin-bottom: 6px;
-        }
-
-        .tips li::marker {
+        /* 保留设置提示 */
+        .nvs-safe {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(0, 242, 254, 0.1);
             color: var(--accent-color);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            border: 1px solid rgba(0, 242, 254, 0.2);
+        }
+
+        /* 配置选择面板 */
+        .config-panel {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 18px;
+            text-align: left;
+            margin-bottom: 30px;
+        }
+
+        .config-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .radio-label:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .radio-label.active {
+            background: rgba(0, 242, 254, 0.05);
+            border-color: rgba(0, 242, 254, 0.3);
+        }
+
+        .radio-label input {
+            accent-color: var(--accent-color);
+            width: 16px;
+            height: 16px;
+        }
+
+        .radio-content {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .radio-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #f3f4f6;
+        }
+
+        .radio-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
         }
 
         /* esp-web-tools 样式贯穿 */
@@ -130,7 +189,6 @@
             --installer-back-color: transparent;
         }
 
-        /* 隐藏原生默认按钮，用插槽定制 */
         .btn-install {
             background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
             color: #000;
@@ -147,21 +205,16 @@
         }
 
         .btn-install:hover {
-            transform: translateY(-2px) scale(1.02);
+            transform: translateY(-2px) scale(1.01);
             box-shadow: 0 12px 25px rgba(0, 242, 254, 0.5);
-        }
-
-        .btn-install:active {
-            transform: translateY(0);
         }
 
         .footer {
             margin-top: 30px;
-            font-size: 12px;
+            font-size: 11px;
             color: rgba(255, 255, 255, 0.3);
         }
     </style>
-    <!-- 引入 Espressif 官方 Web 烧录组件 -->
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 </head>
 
@@ -170,25 +223,70 @@
     <div class="container">
         <div class="logo">🤖</div>
         <h1>Xiaozhi AI Agent</h1>
-        <p class="desc">极客免驱版。通过浏览器 Web Serial 能力直接拉取云端编译固件进行本地刷机。</p>
+        <p class="desc">极客免驱版官网。连接电脑点击下方按钮开始轻量级刷机。</p>
 
-        <div class="tips">
-            <ul>
-                <li>请使用基于 **Chromium** 开发的浏览器（如 Chrome / Edge）</li>
-                <li>使用 **数据线**（非充电线）将 ESP32-S3 BOARD 连接至电脑 USB</li>
-                <li>若烧录无响应，可按住 **BOOT** 键后再连接 USB 进入下载模式</li>
-            </ul>
+        <div class="nvs-safe">
+            🔒 核心原理解析：分拆分区烧录，保护本地 NVS 配置/Wi-Fi
         </div>
 
-        <!-- 核心烧录按钮组件，指定 manifest -->
-        <esp-web-install-button manifest="./manifest.json">
-            <button class="btn-install" slot="activate">⚡ 一键烧录 (Install)</button>
+        <!-- 配置选择器 -->
+        <div class="config-panel">
+            <span class="config-title">1. 请选择刷机类型</span>
+            <div class="radio-group" id="profile-container">
+
+                <label class="radio-label active" data-manifest="./manifest_app.json">
+                    <input type="radio" name="profile" value="./manifest_app.json" checked>
+                    <div class="radio-content">
+                        <span class="radio-name">⚡ 极速更新 App (推荐)</span>
+                        <span class="radio-desc">只更新应用程序（约5秒），绝对保留Wi-Fi和密码</span>
+                    </div>
+                </label>
+
+                <label class="radio-label" data-manifest="./manifest.json">
+                    <input type="radio" name="profile" value="./manifest.json">
+                    <div class="radio-content">
+                        <span class="radio-name">📦 完整系统部署</span>
+                        <span class="radio-desc">覆写 App + Assets 静态区（约30秒），同样保留NVS设置</span>
+                    </div>
+                </label>
+
+            </div>
+        </div>
+
+        <!-- 核心烧录按钮组件，动态绑定 manifest -->
+        <esp-web-install-button id="install-btn" manifest="./manifest_app.json">
+            <button class="btn-install" slot="activate">⚡ 一键执行烧录</button>
         </esp-web-install-button>
 
         <div class="footer">
             Powered by Espressif Web Tools & GitHub Actions
         </div>
     </div>
+
+    <script>
+        // 绑定 Radio Click 联动更新 manifest
+        const container = document.getElementById('profile-container');
+        const installBtn = document.getElementById('install-btn');
+        const labels = document.querySelectorAll('.radio-label');
+
+        container.addEventListener('change', (e) => {
+            if (e.target.name === 'profile') {
+                const selectedManifest = e.target.value;
+
+                // 更新 Button 容器 manifest 属性
+                installBtn.setAttribute('manifest', selectedManifest);
+
+                // 切换样式 active
+                labels.forEach(label => {
+                    if (label.getAttribute('data-manifest') === selectedManifest) {
+                        label.classList.add('active');
+                    } else {
+                        label.classList.remove('active');
+                    }
+                });
+            }
+        });
+    </script>
 
 </body>
 

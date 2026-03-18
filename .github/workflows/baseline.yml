@@ -104,6 +104,7 @@ jobs:
           mkdir -p deploy
           cp web/index.html deploy/
           cp web/manifest.json deploy/
+          cp web/manifest_app.json deploy/
           # 复制各分区 Bin 文件满足 esp-web-tools 多组件要求
           cp build/bootloader/bootloader.bin deploy/
           cp build/partition_table/partition-table.bin deploy/

@@ -1,0 +1,16 @@
+{
+    "name": "Xiaozhi AI - Speed App Update",
+    "version": "Latest CI",
+    "chipFamily": "ESP32-S3",
+    "builds": [
+        {
+            "chipFamily": "ESP32-S3",
+            "parts": [
+                {
+                    "path": "xiaozhi.bin",
+                    "offset": 131072
+                }
+            ]
+        }
+    ]
+}
