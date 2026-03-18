@@ -35,7 +35,7 @@ jobs:
       - name: Install Static Analysis Tools
         run: |
           apt-get update
-          apt-get install -y cppcheck clang-format ccache
+          apt-get install -y cppcheck clang-format ccache rsync
 
       # ---------------- 新增：代码排版格式化检查 ----------------
       - name: Check Code Formatting (Clang-Format)
